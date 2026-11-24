@@ -1,0 +1,18 @@
+{
+  "name": "ThoughtGarden — Pocket Idea Studio",
+  "short_name": "ThoughtGarden",
+  "description": "Capture ideas, brainstorm concisely with AI, and build live MVPs on your phone.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAF9F6",
+  "theme_color": "#0D9488",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='112' fill='%230D9488'/%3E%3Cpath d='M256 128c-62 0-112 50-112 112 0 42 23 79 58 98v30c0 9 7 16 16 16h76c9 0 16-7 16-16v-30c35-19 58-56 58-98 0-62-50-112-112-112z' fill='%23FAF9F6'/%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
