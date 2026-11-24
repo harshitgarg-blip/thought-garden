@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0D9488" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="ThoughtGarden" />
+  <link rel="manifest" href="./manifest.json" />
+  <title>ThoughtGarden — Pocket Idea Studio</title>
+  <style>
+    :root {
+      --bg: #FAF9F6; --surface: #FFFFFF; --sidebar: #F4F2EC; --border: #E6E2D8;
+      --ink: #1C1917; --muted: #57534E; --subtle: #A8A29E;
+      --accent: #0D9488; --accent-hover: #0F766E; --accent-soft: #CCFBF1; --accent-text: #115E59;
+      --amber-soft: #FEF3C7; --amber-text: #92400E;
+      --blue-soft: #DBEAFE; --blue-text: #1E40AF;
+      --purple-soft: #F3E8FF; --purple-text: #6B21A8;
+      --rose-soft: #FFE4E6; --rose-text: #9F1239;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg); color: var(--ink); height: 100dvh; display: flex; overflow: hidden;
+    }
+    button, input, textarea, select { font-family: inherit; }
+    button { cursor: pointer; border: none; background: none; }
+
+    /* Sidebar & Mobile Drawer */
+    .sidebar {
+      width: 285px; background: var(--sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0; z-index: 30; transition: transform 0.25s ease;
+    }
+    .backdrop {
+      display: none; position: fixed; inset: 0; background: rgba(28,25,23,0.35); z-index: 25;
+    }
+    .backdrop.open { display: block; }
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; top: 0; bottom: 0; left: 0; transform: translateX(-100%); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+      .sidebar.open { transform: translateX(0); }
+    }
+
+    .sb-head { padding: 16px; border-bottom: 1px solid var(--border); }
+    .brand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .brand-left { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+    .brand-icon {
+      width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 800;
+    }
+    .btn-primary {
+      width: 100%; background: var(--accent); color: #fff; font-weight: 600; font-size: 14px;
+      padding: 10px 14px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .seg {
+      display: flex; background: rgba(230,226,216,0.7); padding: 3px; border-radius: 10px; margin-top: 10px;
+    }
+    .seg button {
+      flex: 1; padding: 6px; font-size: 12px; font-weight: 600; border-radius: 8px; color: var(--muted);
+    }
+    .seg button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+    .thought-list { flex: 1; overflow-y: auto; padding: 10px; }
+    .group-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--subtle); padding: 10px 8px 4px;
+    }
+    .t-item {
+      width: 100%; text-align: left; padding: 11px 12px; border-radius: 12px; margin-bottom: 4px;
+      border: 1px solid transparent; display: block;
+    }
+    .t-item:hover { background: rgba(255,255,255,0.6); }
+    .t-item.active { background: var(--surface); border-color: var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    .t-title { font-size: 13.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .t-meta { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; font-size: 11px; color: var(--subtle); }
+    .pill { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 99px; }
+    .p-biz { background: var(--amber-soft); color: var(--amber-text); }
+    .p-fin { background: var(--accent-soft); color: var(--accent-text); }
+    .p-hab { background: var(--purple-soft); color: var(--purple-text); }
+    .p-app { background: var(--blue-soft); color: var(--blue-text); }
+
+    /* Main Workspace */
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      height: 54px; border-bottom: 1px solid var(--border); padding: 0 16px;
+      display: flex; align-items: center; justify-content: space-between; background: var(--bg);
+    }
+    .menu-btn { display: none; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); font-size: 13px; font-weight: 600; }
+    @media (max-width: 768px) { .menu-btn { display: inline-flex; align-items: center; gap: 6px; } }
+    .ai-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px;
+      background: var(--surface); border: 1px solid var(--border); font-size: 12.5px; font-weight: 600; color: var(--ink);
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+
+    .canvas { flex: 1; overflow-y: auto; padding: 24px 20px 80px; }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    .h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+    .sub { font-size: 14.5px; color: var(--muted); line-height: 1.5; margin-bottom: 20px; }
+
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+    .textarea {
+      width: 100%; min-height: 130px; border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px; font-size: 16px; line-height: 1.55; background: var(--surface); color: var(--ink); resize: vertical;
+    }
+    .textarea:focus, .input:focus { outline: none; border-color: var(--accent); }
+    .input {
+      width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px; font-size: 14px; background: var(--bg);
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 18px; }
+    .chip {
+      padding: 7px 12px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface);
+      font-size: 12.5px; color: var(--muted); font-weight: 500;
+    }
+    .chip.selected, .chip:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 680px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .mem-row { margin-bottom: 10px; font-size: 13.5px; line-height: 1.45; }
+    .mem-k { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--subtle); display: block; margin-bottom: 2px; }
+
+    /* Phone Frame Preview */
+    .phone-frame {
+      max-width: 360px; margin: 0 auto; border: 8px solid #1C1917; border-radius: 32px;
+      overflow: hidden; background: #fff; box-shadow: 0 16px 36px rgba(0,0,0,0.12);
+    }
+    .phone-notch { height: 20px; background: #1C1917; width: 120px; margin: 0 auto; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+    .phone-iframe { width: 100%; height: 460px; border: none; display: block; }
+
+    /* Modal */
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(28,25,23,0.45);
+      align-items: center; justify-content: center; padding: 16px; z-index: 50;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--surface); border-radius: 18px; max-width: 440px; width: 100%;
+      padding: 20px; border: 1px solid var(--border); max-height: 90dvh; overflow-y: auto;
+    }
+    .btn-sec {
+      padding: 9px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface);
+      font-size: 13.5px; font-weight: 600; color: var(--ink);
+    }
+    .row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+    .status-msg { font-size: 12.5px; color: var(--accent-text); background: var(--accent-soft); padding: 8px 12px; border-radius: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="backdrop" id="backdrop" data-action="close-drawer"></div>
+
+  <!-- Left Navigation Pane -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="brand">
+        <div class="brand-left"><div class="brand-icon">T</div> ThoughtGarden</div>
+        <button class="btn-sec" style="padding:4px 9px;font-size:12px;" data-action="open-settings">⚙️</button>
+      </div>
+      <button class="btn-primary" data-action="new-thought">+ New Thought</button>
+      <div class="seg">
+        <button id="sort-recent" class="active" data-action="set-sort" data-val="recent">Recent</button>
+        <button id="sort-type" data-action="set-sort" data-val="type">By Type</button>
+      </div>
+    </div>
+    <div class="thought-list" id="thought-list"></div>
+  </aside>
+
+  <!-- Main Workspace -->
+  <main class="main">
+    <header class="topbar">
+      <button class="menu-btn" data-action="open-drawer">☰ Thoughts</button>
+      <div style="font-size:13px;color:var(--muted);font-weight:500;" id="stage-label">Capture Idea</div>
+      <button class="ai-pill" data-action="open-settings">
+        <span class="dot"></span>
+        <span id="ai-badge">Built-in AI</span>
+      </button>
+    </header>
+    <div class="canvas">
+      <div class="wrap" id="workspace"></div>
+    </div>
+  </main>
+
+  <!-- AI & GitHub Settings Modal -->
+  <div class="modal-bg" id="settings-modal">
+    <div class="modal">
+      <div class="row-between" style="margin-bottom:14px;">
+        <strong style="font-size:16px;">Connect AI & GitHub</strong>
+        <button class="btn-sec" style="padding:4px 10px;" data-action="close-settings">✕</button>
+      </div>
+
+      <label class="mem-k">AI Brainstorming Provider</label>
+      <select class="input" id="cfg-provider" style="margin-bottom:12px;">
+        <option value="builtin">Built-in Instant AI (Free, Works Offline)</option>
+        <option value="gemini">Google Gemini (gemini-2.5-flash)</option>
+        <option value="claude">Anthropic Claude (claude-sonnet-4-6)</option>
+      </select>
+
+      <div id="api-key-wrap" style="margin-bottom:14px;">
+        <label class="mem-k">API Key (Stored locally on your phone)</label>
+        <input class="input" type="password" id="cfg-apikey" placeholder="Paste Gemini or Anthropic API key..." />
+      </div>
+
+      <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;" />
+
+      <label class="mem-k">GitHub Token (Optional — for 1-Tap Repo & Pages)</label>
+      <input class="input" type="password" id="cfg-ghtoken" placeholder="ghp_... or github_pat_..." style="margin-bottom:10px;" />
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+        Needs <strong>repo</strong> scope (or Contents + Pages Read/Write). Stored only in your browser.
+      </p>
+
+      <button class="btn-primary" data-action="save-settings">Save Connections</button>
+    </div>
+  </div>
+
+  <script>
+    // Safe Storage Wrapper
+    const memFallback = new Map();
+    const Store = {
+      get(k, def) {
+        try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; }
+        catch { return memFallback.has(k) ? memFallback.get(k) : def; }
+      },
+      set(k, v) {
+        try { localStorage.setItem(k, JSON.stringify(v)); } catch {}
+        memFallback.set(k, v);
+      }
+    };
+
+    const DEFAULT_THOUGHTS = [
+      {
+        id: 't1',
+        text: 'A quick pocket order logger for my medical shop where I tap medicines, set quantity, and export daily totals.',
+        type: 'Business & Shop',
+        updatedAt: Date.now() - 1000 * 60 * 18,
+        stage: 'memory',
+        answers: ['Shop staff on phones', 'Item name, qty, price', 'One-tap daily summary'],
+        memory: {
+          goal: 'Fast mobile order & stock counter for retail shopkeepers',
+          users: 'Shop owner & counter staff on mobile',
+          data: ['Item Name', 'Quantity', 'Unit Price'],
+          actions: ['Quick add item', 'Auto-sum daily total', 'Export list']
+        },
+        nodes: ['Tap Item', 'Update Qty', 'Live Total', 'Export Log'],
+        tweaks: []
+      },
+      {
+        id: 't2',
+        text: 'Simple breakout stock checklist before buying so I never enter a trade without checking volume and stop-loss.',
+        type: 'Finance & Tracking',
+        updatedAt: Date.now() - 1000 * 60 * 60 * 5,
+        stage: 'raw',
+        answers: [], memory: null, nodes: [], tweaks: []
+      }
+    ];
+
+    let state = {
+      thoughts: Store.get('tg_thoughts', DEFAULT_THOUGHTS),
+      activeId: null, // null = New Thought canvas
+      sortMode: 'recent',
+      draftText: '',
+      qIndex: 0,
+      tempAnswers: [],
+      loading: false,
+      ghStatus: '',
+      cfg: Store.get('tg_cfg', { provider: 'builtin', apiKey: '', ghToken: '' })
+    };
+
+    function classifyType(text) {
+      const t = text.toLowerCase();
+      if (/shop|order|customer|store|invoice|inventory|business/.test(t)) return 'Business & Shop';
+      if (/stock|trade|budget|expense|money|price|invest/.test(t)) return 'Finance & Tracking';
+      if (/habit|study|read|workout|health|sleep|journal/.test(t)) return 'Creative & Habit';
+      return 'App & SaaS';
+    }
+
+    function pillClass(type) {
+      if (type.includes('Business')) return 'p-biz';
+      if (type.includes('Finance')) return 'p-fin';
+      if (type.includes('Habit')) return 'p-hab';
+      return 'p-app';
+    }
+
+    function timeAgo(ts) {
+      const mins = Math.max(1, Math.floor((Date.now() - ts) / 60000));
+      if (mins < 60) return mins + 'm ago';
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + 'h ago';
+      return Math.floor(hrs / 24) + 'd ago';
+    }
+
+    function saveAll() { Store.set('tg_thoughts', state.thoughts); }
+
+    function renderSidebar() {
+      const list = document.getElementById('thought-list');
+      const sorted = [...state.thoughts].sort((a, b) => b.updatedAt - a.updatedAt);
+      document.getElementById('sort-recent').classList.toggle('active', state.sortMode === 'recent');
+      document.getElementById('sort-type').classList.toggle('active', state.sortMode === 'type');
+
+      const renderItem = (t) => `
+        <button class="t-item ${state.activeId === t.id ? 'active' : ''}" data-action="select-thought" data-id="${t.id}">
+          <div class="t-title">${esc(t.text)}</div>
+          <div class="t-meta">
+            <span class="pill ${pillClass(t.type)}">${esc(t.type)}</span>
+            <span>${timeAgo(t.updatedAt)}</span>
+          </div>
+        </button>`;
+
+      if (state.sortMode === 'recent') {
+        list.innerHTML = sorted.map(renderItem).join('');
+      } else {
+        const groups = {};
+        sorted.forEach(t => { (groups[t.type] = groups[t.type] || []).push(t); });
+        list.innerHTML = Object.entries(groups).map(([g, items]) =>
+          `<div class="group-label">${esc(g)} (${items.length})</div>` + items.map(renderItem).join('')
+        ).join('');
+      }
+
+      const labels = { builtin: 'Built-in AI', gemini: 'Gemini Connected', claude: 'Claude Connected' };
+      document.getElementById('ai-badge').textContent = labels[state.cfg.provider] || 'Built-in AI';
+    }
+
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+    }
+
+    function renderDiagram(nodes) {
+      const list = (nodes && nodes.length ? nodes : ['Capture', 'Process', 'Store', 'Action']).slice(0, 4);
+      const boxW = 142, gap = 26, startX = 16;
+      const svgW = startX * 2 + list.length * boxW + (list.length - 1) * gap;
+      return `
+        <div style="overflow-x:auto;padding:8px 0;">
+          <svg width="${svgW}" height="74" viewBox="0 0 ${svgW} 74">
+            ${list.map((label, i) => {
+              const x = startX + i * (boxW + gap);
+              const arrow = i < list.length - 1
+                ? `<line x1="${x + boxW + 4}" y1="37" x2="${x + boxW + gap - 6}" y2="37" stroke="#0D9488" stroke-width="2"/>
+                   <polygon points="${x + boxW + gap - 6},32 ${x + boxW + gap},37 ${x + boxW + gap - 6},42" fill="#0D9488"/>`
+                : '';
+              return `
+                <rect x="${x}" y="12" width="${boxW}" height="50" rx="12" fill="#F0FDFA" stroke="#0D9488" stroke-width="1.5"/>
+                <text x="${x + boxW / 2}" y="41" text-anchor="middle" font-size="12.5" font-weight="600" fill="#115E59">${esc(label.slice(0, 18))}</text>
+                ${arrow}`;
+            }).join('')}
+          </svg>
+        </div>`;
+    }
+
+    function buildGeneratedAppHTML(t) {
+      const m = t.memory || { goal: t.text, data: ['Title', 'Value'], actions: ['Add Entry'] };
+      const hasSearch = (t.tweaks || []).includes('search');
+      const dark = (t.tweaks || []).includes('dark');
+      return `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+body{font-family:-apple-system,sans-serif;margin:0;padding:16px;background:${dark?'#18181B':'#FAF9F6'};color:${dark?'#F4F4F5':'#1C1917'}}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+h2{font-size:17px;margin:0} .badge{background:#0D9488;color:#fff;font-size:11px;padding:3px 8px;border-radius:99px}
+.box{background:${dark?'#27272A':'#fff'};border:1px solid ${dark?'#3F3F46':'#E6E2D8'};border-radius:12px;padding:12px;margin-bottom:12px}
+input{width:100%;box-sizing:border-box;padding:9px;border-radius:8px;border:1px solid ${dark?'#3F3F46':'#D6D3D1'};margin-bottom:8px;background:${dark?'#18181B':'#fff'};color:inherit}
+button{background:#0D9488;color:#fff;border:none;padding:9px 14px;border-radius:8px;font-weight:600;width:100%}
+.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid ${dark?'#3F3F46':'#F5F5F4'};font-size:14px}
+</style></head><body>
+<div class="hdr"><h2>${esc(m.goal.slice(0, 32))}</h2><span class="badge" id="cnt">0 items</span></div>
+${hasSearch ? `<input id="q" placeholder="Filter entries..." oninput="render()">` : ''}
+<div class="box">
+  <input id="f1" placeholder="${esc(m.data[0] || 'Entry name')}">
+  <input id="f2" placeholder="${esc(m.data[1] || 'Notes / Amount')}">
+  <button onclick="add()">+ ${esc(m.actions[0] || 'Save Item')}</button>
+</div>
+<div class="box" id="list"></div>
+<script>
+let items = [{a:'Sample Entry 1',b:'Ready to test'},{a:'Sample Entry 2',b:'Tap + above to add'}];
+function add(){const a=document.getElementById('f1').value.trim();if(!a)return;items.unshift({a,b:document.getElementById('f2').value.trim()||'Saved'});document.getElementById('f1').value='';document.getElementById('f2').value='';render();}
+function render(){const q=(document.getElementById('q')?.value||'').toLowerCase();const f=items.filter(x=>x.a.toLowerCase().includes(q)||x.b.toLowerCase().includes(q));document.getElementById('cnt').textContent=f.length+' items';document.getElementById('list').innerHTML=f.map((x,i)=>'<div class="row"><div><strong>'+x.a+'</strong><div style="font-size:12px;opacity:.7">'+x.b+'</div></div><span onclick="items.splice('+i+',1);render()" style="cursor:pointer;opacity:.5">✕</span></div>').join('');}
+render();
+<\/script></body></html>`;
+    }
+
+    const QUESTIONS = [
+      { q: 'Who will use this app most?', chips: ['Just me on my phone', 'My shop / team', 'Friends & family'] },
+      { q: 'What is the main thing you tap to save?', chips: ['Quick text notes', 'Item & number / price', 'Daily checklist'] },
+      { q: 'What output helps you most?', chips: ['Clean sorted list', 'Simple daily total', '1-tap share / export'] }
+    ];
+
+    async function generateMemoryWithAI(thought, answers) {
+      const { provider, apiKey } = state.cfg;
+      const prompt = `Turn this 2-line app idea and 3 user answers into a strict JSON object with keys: "goal" (string, max 10 words), "users" (string, max 8 words), "data" (array of 3 short field names), "actions" (array of 3 short button labels), "nodes" (array of 4 short step labels for a flowchart).
+Idea: ${thought.text}
+Answers: ${answers.join(' | ')}`;
+
+      try {
+        if (provider === 'gemini' && apiKey) {
+          const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { responseMimeType: 'application/json' }
+            })
+          });
+          const data = await res.json();
+          const txt = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (txt) return JSON.parse(txt);
+        }
+        if (provider === 'claude' && apiKey) {
+          const res = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': apiKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-6',
+              max_tokens: 300,
+              messages: [{ role: 'user', content: prompt + '\nRespond ONLY with valid JSON.' }]
+            })
+          });
+          const data = await res.json();
+          const txt = data?.content?.[0]?.text;
+          if (txt) return JSON.parse(txt.replace(/```json|```/g, '').trim());
+        }
+      } catch (e) { console.warn('AI fallback used:', e); }
+
+      return {
+        goal: thought.text.slice(0, 65),
+        users: answers[0] || 'Mobile user',
+        data: [answers[1] || 'Item Name', 'Notes / Value', 'Timestamp'],
+        actions: ['Quick Add', answers[2] || 'View Summary', 'Share'],
+        nodes: ['Open App', 'Log Entry', 'Auto Organize', answers[2] || 'Export']
+      };
+    }
+
+    async function pushToGitHub(t) {
+      const token = state.cfg.ghToken.trim();
+      if (!token) {
+        state.ghStatus = 'Add a GitHub Token in ⚙️ Settings first, or download the HTML file below.';
+        renderWorkspace();
+        return;
+      }
+      state.ghStatus = 'Creating repository & pushing PWA files...';
+      renderWorkspace();
+      try {
+        const repoName = 'mvp-' + t.id + '-' + Math.floor(Math.random() * 900 + 100);
+        const userRes = await fetch('https://api.github.com/user', {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' }
+        });
+        const user = await userRes.json();
+        if (!user.login) throw new Error('Invalid GitHub token');
+
+        await fetch('https://api.github.com/user/repos', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: repoName, description: t.text.slice(0, 100), auto_init: false })
+        });
+
+        const files = {
+          'index.html': buildGeneratedAppHTML(t),
+          'MEMORY.md': `# Compacted Spec\n- **Goal:** ${t.memory.goal}\n- **Users:** ${t.memory.users}\n- **Fields:** ${t.memory.data.join(', ')}\n- **Flow:** ${t.nodes.join(' -> ')}`
+        };
+
+        for (const [path, content] of Object.entries(files)) {
+          await fetch(`https://api.github.com/repos/${user.login}/${repoName}/contents/${path}`, {
+            method: 'PUT',
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              message: `Add ${path} from ThoughtGarden`,
+              content: btoa(unescape(encodeURIComponent(content)))
+            })
+          });
+        }
+
+        await fetch(`https://api.github.com/repos/${user.login}/${repoName}/pages`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source: { branch: 'main', path: '/' } })
+        }).catch(() => {});
+
+        state.ghStatus = `✅ Live! Repo: github.com/${user.login}/${repoName} • PWA URL (ready in ~30s): https://${user.login}.github.io/${repoName}/`;
+      } catch (err) {
+        state.ghStatus = '⚠️ GitHub sync error: ' + err.message;
+      }
+      renderWorkspace();
+    }
+
+    function renderWorkspace() {
+      const ws = document.getElementById('workspace');
+      const stageLabel = document.getElementById('stage-label');
+      const t = state.thoughts.find(x => x.id === state.activeId);
+
+      // 1. New Thought View
+      if (!t) {
+        stageLabel.textContent = '1. Capture Thought';
+        ws.innerHTML = `
+          <h1 class="h1">What’s on your mind?</h1>
+          <p class="sub">Write 2–3 messy lines. No formatting needed—we will shape it together.</p>
+          <div class="card">
+            <textarea class="textarea" id="draft-box" placeholder="e.g., A simple app to log my daily water & steps with one tap...">${esc(state.draftText)}</textarea>
+            <div class="chips">
+              <button class="chip" data-action="use-starter" data-text="A pocket expense tracker where I type amount + category in 3 seconds and see my weekly spend.">+ Quick Expense Tracker</button>
+              <button class="chip" data-action="use-starter" data-text="A daily study checklist for my top 3 tasks with a focus timer and streak counter.">+ Top-3 Focus List</button>
+            </div>
+            <button class="btn-primary" data-action="save-thought">Save Thought →</button>
+          </div>`;
+        return;
+      }
+
+      // 2. Raw Thought -> Brainstorm Trigger
+      if (t.stage === 'raw') {
+        stageLabel.textContent = '2. Ready to Shape';
+        ws.innerHTML = `
+          <div class="row-between" style="margin-bottom:10px;">
+            <span class="pill ${pillClass(t.type)}">${esc(t.type)}</span>
+            <span style="font-size:12px;color:var(--subtle);">${timeAgo(t.updatedAt)}</span>
+          </div>
+          <div class="card">
+            <p style="font-size:18px;line-height:1.55;margin-bottom:18px;">${esc(t.text)}</p>
+            <button class="btn-primary" data-action="start-brainstorm">✨ Brainstorm with AI</button>
+          </div>`;
+        return;
+      }
+
+      // 3. 3-Tap Brainstorming
+      if (t.stage === 'brainstorm') {
+        stageLabel.textContent = `3. Brainstorming (${state.qIndex + 1}/3)`;
+        const item = QUESTIONS[state.qIndex];
+        ws.innerHTML = `
+          <h1 class="h1">Let’s clarify in 3 quick taps</h1>
+          <p class="sub">Question ${state.qIndex + 1} of 3 — tap a chip or type your own.</p>
+          <div class="card">
+            <div style="font-weight:700;font-size:16px;margin-bottom:12px;">${esc(item.q)}</div>
+            <div class="chips">
+              ${item.chips.map(c => `<button class="chip" data-action="answer-chip" data-val="${esc(c)}">${esc(c)}</button>`).join('')}
+            </div>
+            <div style="display:flex;gap:8px;">
+              <input class="input" id="custom-ans" placeholder="Or type short answer..." />
+              <button class="btn-primary" style="width:auto;" data-action="answer-custom">Next</button>
+            </div>
+            ${state.loading ? '<div class="status-msg">Distilling compacted memory & diagram...</div>' : ''}
+          </div>`;
+        return;
+      }
+
+      // 4. Compacted Memory & Diagram -> Build MVP
+      if (t.stage === 'memory') {
+        stageLabel.textContent = '4. Compacted Memory & Flow';
+        const m = t.memory;
+        ws.innerHTML = `
+          <div class="row-between" style="margin-bottom:12px;">
+            <h1 class="h1" style="margin:0;">Compacted Blueprint</h1>
+            <button class="btn-sec" data-action="start-brainstorm">Re-brainstorm</button>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <div class="mem-row"><span class="mem-k">Goal</span>${esc(m.goal)}</div>
+              <div class="mem-row"><span class="mem-k">Who</span>${esc(m.users)}</div>
+              <div class="mem-row"><span class="mem-k">Saved Fields</span>${m.data.map(esc).join(' • ')}</div>
+              <div class="mem-row" style="margin:0;"><span class="mem-k">Key Actions</span>${m.actions.map(esc).join(' • ')}</div>
+            </div>
+            <div class="card">
+              <span class="mem-k">Visual App Flow</span>
+              ${renderDiagram(t.nodes)}
+              <p style="font-size:12px;color:var(--muted);margin-top:6px;">Distilled into 4 clean steps—zero chat clutter.</p>
+            </div>
+          </div>
+          <button class="btn-primary" data-action="build-mvp">🚀 Build Live Phone MVP</button>`;
+        return;
+      }
+
+      // 5. Live Phone MVP + GitHub Sync
+      if (t.stage === 'mvp') {
+        stageLabel.textContent = '5. Live MVP & GitHub';
+        const srcdoc = buildGeneratedAppHTML(t);
+        ws.innerHTML = `
+          <div class="row-between" style="margin-bottom:14px;">
+            <h1 class="h1" style="margin:0;">Your Working MVP</h1>
+            <button class="btn-sec" data-action="back-memory">← Blueprint</button>
+          </div>
+          <div class="grid-2" style="align-items:start;">
+            <div class="phone-frame">
+              <div class="phone-notch"></div>
+              <iframe class="phone-iframe" sandbox="allow-scripts" srcdoc="${esc(srcdoc)}"></iframe>
+            </div>
+            <div>
+              <div class="card">
+                <span class="mem-k">1-Tap Phone Upgrades</span>
+                <div class="chips" style="margin-bottom:0;">
+                  <button class="chip ${(t.tweaks||[]).includes('search')?'selected':''}" data-action="toggle-tweak" data-val="search">+ Search Filter</button>
+                  <button class="chip ${(t.tweaks||[]).includes('dark')?'selected':''}" data-action="toggle-tweak" data-val="dark">+ Dark Mode</button>
+                </div>
+              </div>
+              <div class="card">
+                <span class="mem-k">Save & Share Anywhere</span>
+                <p style="font-size:13px;color:var(--muted);margin-bottom:12px;">
+                  Push this MVP + <code>MEMORY.md</code> to GitHub so friends or Claude Code can continue building.
+                </p>
+                <button class="btn-primary" style="margin-bottom:8px;" data-action="push-github">Push to GitHub & Enable PWA</button>
+                <button class="btn-sec" style="width:100%;" data-action="download-html">Download Standalone .html</button>
+                ${state.ghStatus ? `<div class="status-msg">${esc(state.ghStatus)}</div>` : ''}
+              </div>
+            </div>
+          </div>`;
+      }
+    }
+
+    // Event Delegation
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const act = btn.dataset.action;
+      const t = state.thoughts.find(x => x.id === state.activeId);
+
+      if (act === 'open-drawer') {
+        document.getElementById('sidebar').classList.add('open');
+        document.getElementById('backdrop').classList.add('open');
+      } else if (act === 'close-drawer') {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('backdrop').classList.remove('open');
+      } else if (act === 'new-thought') {
+        state.activeId = null;
+        state.draftText = '';
+        state.ghStatus = '';
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('backdrop').classList.remove('open');
+        renderSidebar(); renderWorkspace();
+      } else if (act === 'set-sort') {
+        state.sortMode = btn.dataset.val;
+        renderSidebar();
+      } else if (act === 'select-thought') {
+        state.activeId = btn.dataset.id;
+        state.ghStatus = '';
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('backdrop').classList.remove('open');
+        renderSidebar(); renderWorkspace();
+      } else if (act === 'use-starter') {
+        state.draftText = btn.dataset.text;
+        renderWorkspace();
+      } else if (act === 'save-thought') {
+        const val = document.getElementById('draft-box').value.trim();
+        if (!val) return;
+        const newT = {
+          id: 't' + Date.now().toString(36),
+          text: val,
+          type: classifyType(val),
+          updatedAt: Date.now(),
+          stage: 'raw',
+          answers: [], memory: null, nodes: [], tweaks: []
+        };
+        state.thoughts.unshift(newT);
+        state.activeId = newT.id;
+        saveAll(); renderSidebar(); renderWorkspace();
+      } else if (act === 'start-brainstorm' && t) {
+        t.stage = 'brainstorm';
+        state.qIndex = 0;
+        state.tempAnswers = [];
+        renderWorkspace();
+      } else if ((act === 'answer-chip' || act === 'answer-custom') && t) {
+        const ans = act === 'answer-chip' ? btn.dataset.val : document.getElementById('custom-ans').value.trim();
+        if (!ans) return;
+        state.tempAnswers.push(ans);
+        if (state.qIndex < 2) {
+          state.qIndex++;
+          renderWorkspace();
+        } else {
+          state.loading = true;
+          renderWorkspace();
+          const mem = await generateMemoryWithAI(t, state.tempAnswers);
+          t.answers = state.tempAnswers;
+          t.memory = mem;
+          t.nodes = mem.nodes || ['Capture', 'Organize', 'Review', 'Export'];
+          t.stage = 'memory';
+          t.updatedAt = Date.now();
+          state.loading = false;
+          saveAll(); renderSidebar(); renderWorkspace();
+        }
+      } else if (act === 'build-mvp' && t) {
+        t.stage = 'mvp';
+        t.updatedAt = Date.now();
+        saveAll(); renderWorkspace();
+      } else if (act === 'back-memory' && t) {
+        t.stage = 'memory';
+        renderWorkspace();
+      } else if (act === 'toggle-tweak' && t) {
+        const tw = btn.dataset.val;
+        t.tweaks = t.tweaks || [];
+        t.tweaks = t.tweaks.includes(tw) ? t.tweaks.filter(x => x !== tw) : [...t.tweaks, tw];
+        saveAll(); renderWorkspace();
+      } else if (act === 'push-github' && t) {
+        pushToGitHub(t);
+      } else if (act === 'download-html' && t) {
+        const blob = new Blob([buildGeneratedAppHTML(t)], { type: 'text/html' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'my-mvp-app.html';
+        a.click();
+      } else if (act === 'open-settings') {
+        document.getElementById('cfg-provider').value = state.cfg.provider;
+        document.getElementById('cfg-apikey').value = state.cfg.apiKey;
+        document.getElementById('cfg-ghtoken').value = state.cfg.ghToken;
+        document.getElementById('settings-modal').classList.add('open');
+      } else if (act === 'close-settings') {
+        document.getElementById('settings-modal').classList.remove('open');
+      } else if (act === 'save-settings') {
+        state.cfg = {
+          provider: document.getElementById('cfg-provider').value,
+          apiKey: document.getElementById('cfg-apikey').value.trim(),
+          ghToken: document.getElementById('cfg-ghtoken').value.trim()
+        };
+        Store.set('tg_cfg', state.cfg);
+        document.getElementById('settings-modal').classList.remove('open');
+        renderSidebar();
+      }
+    });
+
+    // Register PWA Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    renderSidebar();
+    renderWorkspace();
+  </script>
+</body>
+</html>
